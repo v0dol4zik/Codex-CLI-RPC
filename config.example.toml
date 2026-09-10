@@ -1,0 +1,16 @@
+# Discord Developer Portal -> General Information -> Application ID
+client_id = "YOUR_DISCORD_APPLICATION_ID"
+
+# Необязательно: путь к настоящему Codex CLI.
+# codex_binary = "/home/user/.local/bin/codex"
+
+details = "Работаю в Codex"
+state = "Codex CLI"
+retry_seconds = 2
+refresh_seconds = 15
+process_poll_seconds = 1
+# lock_file = "/run/user/<uid>/codex-discord-rpc.lock"
+
+# Имена изображений из Discord Rich Presence Art Assets.
+# large_image = "codex"
+# large_text = "OpenAI Codex"

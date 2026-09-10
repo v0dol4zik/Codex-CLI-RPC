@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+"""Development launcher for the Codex Discord RPC wrapper."""
+
+from pathlib import Path
+import sys
+
+project_root = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(project_root / "src"))
+
+from codex_discord_rpc.cli import main
+
+
+raise SystemExit(main())
