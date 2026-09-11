@@ -1,15 +1,25 @@
+# Managed by Codex-CLI-RPC
 [Unit]
 Description=Discord Rich Presence monitor for Codex CLI
+Documentation=https://github.com/v0dol4zik/Codex-CLI-RPC
 After=graphical-session.target
 PartOf=graphical-session.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
-Type=simple
+Type=exec
 ExecStart=%h/.local/bin/codex-rpc --monitor
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
-Restart=always
-RestartSec=2
-TimeoutStopSec=5
+Restart=on-failure
+RestartPreventExitStatus=2 75 127 203
+RestartSec=5s
+TimeoutStopSec=5s
+UMask=0077
+MemoryMax=64M
+TasksMax=64
+NoNewPrivileges=yes
+RestrictAddressFamilies=AF_UNIX
 
 [Install]
 WantedBy=graphical-session.target

@@ -1,4 +1,4 @@
-# Codex-cli Discord RPC
+# Codex CLI Discord RPC
 
 ```ascii
 _________     _________                _________________________
@@ -10,12 +10,13 @@ _  /    _  __ \  __  /_  _ \_  |/_/    __  /_/ /_  /_/ /  /
 
 [![AI Slop Inside](https://sladge.net/badge.svg)](https://sladge.net)
 [![Platform: Linux](https://img.shields.io/badge/platform-Linux-FCC624?logo=linux&logoColor=black)](#requirements)
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Runtime dependencies: none](https://img.shields.io/badge/runtime_dependencies-none-2ea44f)](pyproject.toml)
+[![CI](https://github.com/v0dol4zik/Codex-CLI-RPC/actions/workflows/ci.yml/badge.svg)](https://github.com/v0dol4zik/Codex-CLI-RPC/actions/workflows/ci.yml)
+[![Go 1.23+](https://img.shields.io/badge/Go-1.23%2B-00ADD8?logo=go&logoColor=white)](https://go.dev/)
+[![Runtime dependencies: none](https://img.shields.io/badge/runtime_dependencies-none-2ea44f)](go.mod)
 [![Service: systemd](https://img.shields.io/badge/service-systemd-0086CC?logo=systemd&logoColor=white)](systemd/codex-discord-rpc.service)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**A Python script for Linux that shows how long Codex CLI has been running in Discord Rich Presence.**
+**A small Go program for Linux that shows how long Codex CLI has been running in Discord Rich Presence.**
 
 After installation, a user-level systemd service monitors `codex` processes
 and displays an Activity in Discord.
@@ -23,24 +24,27 @@ and displays an Activity in Discord.
 ## Features
 
 - the timer starts when `codex` is actually launched and resets when it closes;
+- a Codex process already running when the monitor starts is detected;
 - closing the Discord client does not reset the timer;
 - a lock file prevents a second RPC client from starting;
 - if several `codex` processes are running, the newest one is selected;
 - Codex continues working when Discord is unavailable;
+- one statically linked Go binary keeps runtime memory and startup overhead low;
+- idle process scans back off to five seconds to reduce wakeups when Codex is not running;
 - no Bot Token, external server, or OpenAI API key is used.
 
 ## Requirements
 
 - a Linux distribution that supports the Discord desktop client;
-- Python 3.11 or newer;
+- Go 1.23 or newer to build from source;
 - Codex CLI, with the `codex` command available in `PATH`;
 - a Discord Application ID from the Developer Portal.
 
 ## Installation
 
 ```bash
-git clone <repository-URL> codex-discord-rpc
-cd codex-discord-rpc
+git clone https://github.com/v0dol4zik/Codex-CLI-RPC.git
+cd Codex-CLI-RPC
 
 mkdir -p ~/.config/codex-discord-rpc
 cp config.example.toml ~/.config/codex-discord-rpc/config.toml
@@ -53,12 +57,30 @@ Get a Discord Application ID and replace the value in `config.toml` with your
 own. For the background systemd service, the ID must be stored in the config
 file, not only in a variable in your shell environment.
 
-The installer places the launcher in `~/.local/bin/codex-rpc`, copies the
-package to `~/.local/share/codex-discord-rpc`, and enables:
+The installer builds a static Go binary, places it in
+`~/.local/share/codex-discord-rpc`, creates `~/.local/bin/codex-rpc`, and
+packages the unit at:
 
 ```text
-~/.config/systemd/user/codex-discord-rpc.service
+~/.local/share/codex-discord-rpc/systemd/codex-discord-rpc.service
 ```
+
+It deliberately does not call `systemctl` or change the running service.
+Review [the unit](systemd/codex-discord-rpc.service), then explicitly install,
+enable, and start it:
+
+```bash
+codex-rpc service install
+codex-rpc service enable
+codex-rpc service start     # fresh install
+# or, when explicitly upgrading an active older service:
+codex-rpc service restart
+```
+
+These commands are separate by design. `service install` only atomically
+writes the unit, removes the obsolete v0.1.0 `default.target` symlink when it
+is actually a symlink, and runs `daemon-reload`. It never enables, starts,
+stops, or restarts the service.
 
 ## Running and managing
 
@@ -72,6 +94,7 @@ Check the RPC and systemd service:
 
 ```bash
 codex-rpc --check
+codex-rpc --rpc-version
 codex-rpc service status
 ```
 
@@ -79,16 +102,18 @@ Manage the user service:
 
 ```bash
 codex-rpc service install
+codex-rpc service enable
+codex-rpc service disable
+codex-rpc service start
 codex-rpc service restart
 codex-rpc service stop
 codex-rpc service uninstall
 ```
 
-The unit is bound to `graphical-session.target`, so it starts with the desktop
-session and stops with it. Upgrading from 0.1.0 rewrites the unit and removes the
-old `default.target` enable symlink: that release pulled `graphical-session.target`
-up on any login, including a plain tty, which made GNOME refuse to open a real
-session with `A graphical session is already running!`.
+The unit is bound to `graphical-session.target`, so it starts and stops with
+the desktop session without pulling that target into a TTY login. It uses
+`Restart=on-failure`, restart-rate limiting, `MemoryMax=64M`, `TasksMax=64`,
+`NoNewPrivileges=yes`, and Unix-socket-only networking.
 
 If the systemd service is unavailable, you can start the monitor manually:
 
@@ -96,9 +121,9 @@ If the systemd service is unavailable, you can start the monitor manually:
 codex-rpc --monitor
 ```
 
-Do not add `alias codex='codex-rpc'` while the background service is enabled:
-this would create a second RPC client. Wrapper mode is kept for manual launches
-and compatibility:
+No shell alias is required: the background monitor detects the ordinary
+`codex` command, and the lock prevents duplicate RPC clients. Wrapper mode is
+kept for manual launches and compatibility:
 
 ```bash
 codex-rpc exec "check the tests"
@@ -106,7 +131,7 @@ codex-rpc exec "check the tests"
 
 ## Configuration
 
-The script's main settings are stored in
+The program's main settings are stored in
 `~/.config/codex-discord-rpc/config.toml`. Environment variables take
 precedence over the TOML file.
 
@@ -118,6 +143,8 @@ precedence over the TOML file.
 | `state` / `CODEX_RPC_STATE`                               | Second Activity line               | `Codex CLI`            |
 | `process_poll_seconds` / `CODEX_RPC_PROCESS_POLL_SECONDS` | Process scan interval              | `1`                    |
 | `retry_seconds` / `CODEX_RPC_RETRY_SECONDS`               | Discord reconnection interval      | `2`                    |
+| `refresh_seconds` / `CODEX_RPC_REFRESH_SECONDS`           | Presence refresh interval           | `15`                   |
+| `runtime_dir` / `CODEX_RPC_RUNTIME_DIR`                   | Explicit Discord socket directory   | automatic              |
 | `lock_file` / `CODEX_RPC_LOCK_FILE`                       | Lock-file path                     | automatic              |
 
 Rich Presence images can be configured with `large_image` and `large_text`
@@ -131,6 +158,8 @@ client starts and sends `SET_ACTIVITY` with `timestamps.start`. When the
 process exits, the Activity is cleared. RPC errors do not stop Codex.
 
 The project is designed for Linux and connects only to the local Discord IPC.
+It is a single self-contained Go binary at runtime. The TOML parser is pinned
+in `go.mod` and linked into the binary during the build.
 
 ## Uninstallation
 
@@ -147,19 +176,26 @@ cloned repository:
 ./scripts/uninstall.sh
 ```
 
-The script checks the installer's marker before removing the installation
-directory. It does not remove the user configuration at
-`~/.config/codex-discord-rpc`. The `codex-rpc service uninstall` command only
-removes the user service.
+The file-removal script refuses to continue while the user unit or one of its
+known enable symlinks is present, and it never calls `systemctl`. It checks the
+installer's marker and does not remove `~/.config/codex-discord-rpc`.
 
 ## Development and tests
 
 ```bash
-python3 -m unittest discover -s tests -v
-python3 -m compileall -q src bin
-bash -n scripts/install.sh scripts/uninstall.sh scripts/check-public-repo.sh
+gofmt -w cmd internal
+go mod verify
+go vet ./...
+go test -race ./...
+go test -cover ./...
+CGO_ENABLED=0 go build -trimpath ./cmd/codex-rpc
+bash -n scripts/*.sh
+bash scripts/test-install.sh
 bash scripts/check-public-repo.sh
+systemd-analyze verify systemd/codex-discord-rpc.service
 ```
 
-The current Codex CLI command reference is available in the
+The utility version is printed with `codex-rpc --rpc-version`; `--version` is
+passed through to Codex in wrapper mode. The current Codex CLI command
+reference is available in the
 [official documentation](https://developers.openai.com/codex/cli/reference/).

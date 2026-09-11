@@ -12,7 +12,7 @@ Describe the expected and actual behavior.
 ## Environment
 
 - Linux distribution:
-- Python version:
+- Go version:
 - Codex CLI version:
 - Discord Desktop version:
 

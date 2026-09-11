@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-project_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+project_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 scan_args=(
     --hidden
     --glob '!.git/**'
@@ -23,5 +23,7 @@ check_pattern 'числовой Discord Application ID' '(?<![0-9])[0-9]{17,20}(
 check_pattern '64-символьный hex secret' '(?<![A-Fa-f0-9])[A-Fa-f0-9]{64}(?![A-Fa-f0-9])'
 check_pattern 'заполненный token/secret' '(?i)(bot_token|client_secret|discord_token)[[:space:]]*=[[:space:]]*["'"'][^"'"']+["'"']'
 check_pattern 'персональный абсолютный home path' '/home/(?!user(?:/|$))[^/[:space:]]+/'
+check_pattern 'приватный SSH-ключ' 'BEGIN (OPENSSH|RSA|EC|DSA) PRIVATE KEY'
+check_pattern 'GitHub access token' '(ghp|github_pat)_[A-Za-z0-9_]+'
 
 exit "${failed}"

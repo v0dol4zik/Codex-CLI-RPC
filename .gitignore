@@ -17,3 +17,6 @@ config.toml
 *.secret
 .idea/
 .vscode/
+/codex-rpc
+coverage.out
+*.test
