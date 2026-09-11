@@ -1,7 +1,7 @@
 [Unit]
 Description=Discord Rich Presence monitor for Codex CLI
 After=graphical-session.target
-Wants=graphical-session.target
+PartOf=graphical-session.target
 
 [Service]
 Type=simple
@@ -12,4 +12,4 @@ RestartSec=2
 TimeoutStopSec=5
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target

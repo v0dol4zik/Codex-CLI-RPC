@@ -84,6 +84,12 @@ codex-rpc service stop
 codex-rpc service uninstall
 ```
 
+The unit is bound to `graphical-session.target`, so it starts with the desktop
+session and stops with it. Upgrading from 0.1.0 rewrites the unit and removes the
+old `default.target` enable symlink: that release pulled `graphical-session.target`
+up on any login, including a plain tty, which made GNOME refuse to open a real
+session with `A graphical session is already running!`.
+
 If the systemd service is unavailable, you can start the monitor manually:
 
 ```bash

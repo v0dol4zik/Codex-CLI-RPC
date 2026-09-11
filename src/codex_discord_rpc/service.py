@@ -9,10 +9,11 @@ import tempfile
 
 
 SERVICE_NAME = "codex-discord-rpc.service"
+LEGACY_WANTS_DIRECTORY = "default.target.wants"
 SERVICE_UNIT = """[Unit]
 Description=Discord Rich Presence monitor for Codex CLI
 After=graphical-session.target
-Wants=graphical-session.target
+PartOf=graphical-session.target
 
 [Service]
 Type=simple
@@ -23,7 +24,7 @@ RestartSec=2
 TimeoutStopSec=5
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target
 """
 
 
@@ -40,6 +41,20 @@ def service_directory() -> Path:
 
 def service_path() -> Path:
     return service_directory() / SERVICE_NAME
+
+
+def _remove_legacy_install_symlink() -> None:
+    # Releases up to 0.1.0 shipped WantedBy=default.target alongside
+    # Wants=graphical-session.target, so the unit pulled that target up on any
+    # login - a plain tty included - and the next real desktop session aborted
+    # with "A graphical session is already running!". `systemctl enable` only
+    # adds the new symlink, so the stale one has to be dropped explicitly or an
+    # upgraded install keeps starting outside a graphical session.
+    legacy = service_directory() / LEGACY_WANTS_DIRECTORY / SERVICE_NAME
+    try:
+        legacy.unlink()
+    except FileNotFoundError:
+        pass
 
 
 def _systemctl(*arguments: str, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -85,6 +100,7 @@ def install_service() -> Path:
             os.unlink(temporary_name)
         except FileNotFoundError:
             pass
+    _remove_legacy_install_symlink()
     _systemctl("daemon-reload")
     _systemctl("enable", SERVICE_NAME)
     _systemctl("restart", SERVICE_NAME)
