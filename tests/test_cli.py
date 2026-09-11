@@ -13,6 +13,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from codex_discord_rpc import __version__  # noqa: E402
 from codex_discord_rpc.cli import (  # noqa: E402
     CodexMonitor,
     PresenceWorker,
@@ -280,7 +281,7 @@ class CliTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            self.assertEqual(result.stdout.strip(), "0.1.0")
+            self.assertEqual(result.stdout.strip(), __version__)
             self.assertTrue((Path(directory) / "systemd" / "codex-discord-rpc.service").is_file())
             self.assertTrue((root / "systemd" / "codex-discord-rpc.service").is_file())
 
